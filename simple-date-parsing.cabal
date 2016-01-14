@@ -1,0 +1,39 @@
+name:                simple-date-parsing
+version:             0.1.0.0
+synopsis:            Parsing of simple relative dates
+description:         Please see README.md
+homepage:            http://github.com/davidpdrsn/simple-date-parsing
+license:             BSD3
+license-file:        LICENSE
+author:              David Pedersen
+maintainer:          david.pdrsn@gmail.com
+copyright:           2016 David Pedersen
+category:            Acme
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+tested-with:         GHC == 7.10.3
+
+library
+  default-language:    Haskell2010
+  ghc-options:         -Wall -O2
+  hs-source-dirs:      src
+  exposed-modules:     Data.Date.SimpleParse
+  build-depends:       base >= 4.7 && < 5
+                     , parsec
+                     , time
+
+test-suite spec
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , simple-date-parsing
+                     , hspec
+                     , QuickCheck
+
+source-repository head
+  type:     git
+  location: https://github.com/davidpdrsn/simple-date-parsing
