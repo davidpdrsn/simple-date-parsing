@@ -3,7 +3,7 @@ module Data.Date.SimpleParseSpec (main, spec) where
 import Test.Hspec
 import Test.QuickCheck
 
-import Data.Date.SimpleParse
+import Data.Date.SimpleParse.Internal
 
 main :: IO ()
 main = hspec spec
