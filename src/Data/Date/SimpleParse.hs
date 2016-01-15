@@ -1,6 +1,6 @@
 module Data.Date.SimpleParse
     ( DateDiff(..)
-    , OffsetDirection(..)
+    , Offset(..)
     , parseToDateDiff
     , parseDate
     )
@@ -15,41 +15,42 @@ parseDate str = case parseToDateDiff str of
                   Right date -> Right <$> compileDate date
 
 parseToDateDiff :: String -> Either ParseError DateDiff
-parseToDateDiff = parse dateParser ""
+parseToDateDiff "now" = return $ Ago [Seconds 0]
+parseToDateDiff s = parse dateParser "" s
 
-data DateDiff = Years   OffsetDirection Integer
-              | Months  OffsetDirection Integer
-              | Weeks   OffsetDirection Integer
-              | Days    OffsetDirection Integer
-              | Hours   OffsetDirection Integer
-              | Minutes OffsetDirection Integer
-              | Seconds OffsetDirection Integer
+data DateDiff = Ago [Offset]
+              | FromNow [Offset]
               deriving (Eq, Show)
 
-data OffsetDirection = Ago
-                     | FromNow
-                     deriving (Eq, Show)
+data Offset = Years   Integer
+            | Months  Integer
+            | Weeks   Integer
+            | Days    Integer
+            | Hours   Integer
+            | Minutes Integer
+            | Seconds Integer
+            deriving (Eq, Show)
 
 --
 
 dateDiffToSeconds :: DateDiff -> Integer
-dateDiffToSeconds (Years direction n) = applyDirection direction $ n * secondsInYear
-dateDiffToSeconds (Months direction n) = applyDirection direction $ n * secondsInMonth
-dateDiffToSeconds (Weeks direction n) = applyDirection direction $ n * secondsInWeek
-dateDiffToSeconds (Days direction n) = applyDirection direction $ n * secondsInDay
-dateDiffToSeconds (Hours direction n) = applyDirection direction $ n * secondsInHour
-dateDiffToSeconds (Minutes direction n) = applyDirection direction $ n * secondsInMinute
-dateDiffToSeconds (Seconds direction n) = applyDirection direction $ n * secondsInSecond
+dateDiffToSeconds (Ago offsets) = sum (map toSeconds offsets) * (- 1)
+dateDiffToSeconds (FromNow offsets) = sum (map toSeconds offsets)
+
+toSeconds :: Offset -> Integer
+toSeconds (Years n)   = n * secondsInYear
+toSeconds (Months n)  = n * secondsInMonth
+toSeconds (Weeks n)   = n * secondsInWeek
+toSeconds (Days n)    = n * secondsInDay
+toSeconds (Hours n)   = n * secondsInHour
+toSeconds (Minutes n) = n * secondsInMinute
+toSeconds (Seconds n) = n * secondsInSecond
 
 compileDate :: DateDiff -> IO UTCTime
 compileDate date = do
     now <- getCurrentTime
     let diff = realToFrac $ secondsToDiffTime $ dateDiffToSeconds date
     return $ addUTCTime diff now
-
-applyDirection :: Num a => OffsetDirection -> a -> a
-applyDirection Ago = (* (-1))
-applyDirection FromNow = id
 
 secondsInYear :: Integer
 secondsInYear = secondsInDay * 365
@@ -75,16 +76,21 @@ secondsInSecond = 1
 dateParser :: Parser DateDiff
 dateParser = do
     ago <- optionMaybe $ char '-'
-    let direction = case ago of
-                      Nothing -> FromNow
-                      Just _ -> Ago
+    let diff = case ago of
+                 Nothing -> FromNow
+                 Just _ -> Ago
+    offset <- many1 offsetParser
+    return $ diff offset
+
+offsetParser :: Parser Offset
+offsetParser = do
     offset <- read <$> many1 digit
     range <- oneOf $ map fst constructors
     case lookup range constructors of
       Nothing -> fail "Unknown time specifier"
-      Just constructor -> return $ constructor direction offset
+      Just constructor -> return $ constructor offset
 
-constructors :: [(Char, OffsetDirection -> Integer -> DateDiff)]
+constructors :: [(Char, Integer -> Offset)]
 constructors = [ ('y', Years)
                , ('M', Months)
                , ('w', Weeks)
